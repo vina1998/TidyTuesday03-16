@@ -1,0 +1,62 @@
+---
+title: "What do videogame titles reveal?"
+author: "Vina"
+date: "21/03/2021"
+output: html_document
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+games <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-16/games.csv')
+library(tidyverse)
+library(tidytext) 
+library(textdata)
+library(wordcloud)
+library(knitr)
+library(dplyr)
+```
+
+
+```{r, echo=TRUE}
+#which games garner the most traction on average? 
+most_traction <- games %>% as_tibble() %>% unnest_tokens(word, gamename) 
+#remove words that aren't useful like "to" and "of" 
+most_traction <- most_traction %>% anti_join(stop_words) 
+#most common words in titles
+test <- most_traction %>% count(word, sort = TRUE) 
+test %>% filter(n>500) %>% ggplot(aes(n,word)) +geom_col()
+#get joy lexicon 
+nrc_joy <- get_sentiments("nrc") %>%  filter(sentiment == "joy")
+#positive words
+joy_words <- most_traction %>%inner_join(nrc_joy) %>% count(word, sort = TRUE) %>% with(wordcloud(word, n))
+# get disgust lexicon 
+nrc_disgust <- get_sentiments("nrc") %>%  filter(sentiment == "disgust")
+#disgust words
+disgust_words <- most_traction %>%inner_join(nrc_disgust) %>% count(word, sort = TRUE) %>% with(wordcloud(word, n))
+#popularity  based on three most "digusting" word throughout the years
+most_traction_disgust <- most_traction %>% filter(word %in% c("evil","theft","mad")) 
+ggplot(most_traction_disgust,aes(year,peak)) + geom_smooth(aes(color=word))
+#popularity  based on three most "joyful" word throughout the years
+most_traction_joy <- most_traction %>% filter(word %in% c("star","dawn","football")) 
+ggplot(most_traction_joy,aes(year,peak)) + geom_smooth(aes(color=word))
+```
+ 
+Trust and teamwork 
+ 
+```{r, echo=TRUE}
+#Trust in videogames? 
+nrc_trust <- get_sentiments("nrc") %>%  filter(sentiment == "trust")
+trust_words <- most_traction %>%inner_join(nrc_trust) %>% count(word, sort = TRUE) %>% with(wordcloud(word, n))
+trust_words <- most_traction %>% filter(word %in% c("definitive","civilization","endless","elder"))
+ggplot(trust_words,aes(year,avg)) +geom_smooth(aes(color=word)) 
+```
+
+The importance of context in video game titles! For example: notice how "resident" a popular positive word is in reality paired with "evil" which was a popular negative word. Perhaps appealing to teamwork in more adult themed violent games? 
+
+
+```{r, echo=FALSE}
+bigrams <- games %>% as_tibble() %>% unnest_tokens(bigram, gamename, token = "ngrams",n=2) %>% count(bigram) %>% arrange(desc(n)) %>% na.omit() %>% filter(n>500) 
+bigrams
+```
+
